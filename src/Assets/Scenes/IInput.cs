@@ -7,6 +7,7 @@ namespace Scenes {
         Observable<Vector2> lookInput { get; }
 
         Observable<Unit> jumpInput { get; }
+        Observable<Unit> crouchInput { get; }
 
         //например E
         Observable<Unit> interactionInput { get; }

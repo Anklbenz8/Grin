@@ -8,12 +8,14 @@ namespace Scenes {
         public Observable<Vector2> lookInput => _lookInputSubject;
 
         public Observable<Unit> jumpInput => _jumpInputSubject;
+        public Observable<Unit> crouchInput => _crouchInputSubject;
         public Observable<Unit> interactionInput => _interactionInputSubject;
         public Observable<Unit> actionInput => _actionInputSubject;
 
         private readonly Subject<Vector2> _moveInputSubject = new();
         private readonly Subject<Vector2> _lookInputSubject = new();
         private readonly Subject<Unit> _jumpInputSubject = new();
+        private readonly Subject<Unit> _crouchInputSubject = new();
         private readonly Subject<Unit> _actionInputSubject = new();
         private readonly Subject<Unit> _interactionInputSubject = new();
 
@@ -50,6 +52,12 @@ namespace Scenes {
                 .Select(_ => Input.GetKey(KeyCode.Space))
                 .Where(action => action)
                 .Subscribe(_ => _jumpInputSubject.OnNext(Unit.Default))
+                .AddTo(_subscribes);
+
+            Observable.EveryUpdate()
+                .Select(_ => Input.GetKeyDown(KeyCode.LeftControl))
+                .Where(action => action)
+                .Subscribe(_ => _crouchInputSubject.OnNext(Unit.Default))
                 .AddTo(_subscribes);
         }
 
