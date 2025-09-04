@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Scenes {
     public interface IInteractable {
-        void Interact();
+        void Interact(InteractionContext context);
     }
 
 
@@ -31,8 +31,15 @@ namespace Scenes {
                 .AddTo(_disposables);
 
             input.interactionInput
-                .Subscribe(_ => _interactor.Interact())
+                .Subscribe(_ => TryInteract())
                 .AddTo(_disposables);
+        }
+
+        private void TryInteract() {
+            var ctx = new InteractionContext() {
+                forward = transform.forward,
+            };
+            _interactor.Interact(ctx);
         }
 
 

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Scenes {
@@ -10,11 +11,12 @@ namespace Scenes {
         [SerializeField] private float standHeight = 1.8f;
         [SerializeField] private float crouchHeight = 1f;
         [SerializeField] private float crouchSpeed = 6f;
-        [SerializeField] private float moveSpeed = 2f;
-        [SerializeField] private float strafeSpeed = 1f;
+        [SerializeField] private float standMoveSpeed = 3f;
+        [SerializeField] private float crouchSpeedMultiplier = 0.5f;
+
         [SerializeField] private float lookSensitivity = 3f;
         [SerializeField] private float crouchCameraOffset = 0.5f;
-        [SerializeField] private float crouchSpeedMultiplier = 0.5f;
+
         [SerializeField] private Vector2 lookUpMinMax = new Vector2(-80f, 80f);
 
         private Vector3 _moveVector;
@@ -23,11 +25,21 @@ namespace Scenes {
         private bool _isGrounded;
         private bool _isCrouching;
         private bool _isJumpRequested;
+        private bool _isSmoothCrouchRequested;
+        private float _targetHeight;
+        private float _targetCameraY;
+        private float _characterCenterY;
+        private float _moveSpeed;
+
+        private void Awake() {
+            _moveSpeed = standMoveSpeed;
+        }
 
         private void FixedUpdate() {
             HandleGravityAndJump();
             HandleMovement();
-            HandleCrouch();
+            if (_isSmoothCrouchRequested)
+                HandleCrouch();
         }
 
         public void Move(Vector2 inputDirection) {
@@ -36,7 +48,7 @@ namespace Scenes {
             // Нормализуем input, чтобы диагональная скорость не превышала скорость вперед/назад
             Vector2 inputNormalized = Vector2.ClampMagnitude(inputDirection, 1f);
 
-            _moveVector = (forward * inputNormalized.y + right * inputNormalized.x) * moveSpeed;
+            _moveVector = (forward * inputNormalized.y + right * inputNormalized.x) * _moveSpeed;
         }
 
         public void Look(Vector3 mouseDelta) {
@@ -47,20 +59,49 @@ namespace Scenes {
             camera.transform.localEulerAngles = new Vector3(_cameraPitch, 0, 0);
         }
 
+
         public void ToggleCrouch() {
             if (_isCrouching) {
                 // Проверяем, можно ли встать
-                if (CanStand()) 
-                    _isCrouching = false;
+                if (CanStand())
+                    StandUp();
             }
             else {
-                _isCrouching = true;
+                Crouch();
             }
         }
 
 
         public void Jump() {
-            _isJumpRequested = true;
+            // Если присели - встаем перед прыжком
+            if (_isCrouching && CanStand()) {
+                StandUp();
+                return;
+            }
+
+            if (!_isCrouching)
+                _isJumpRequested = true;
+        }
+
+        private void Crouch() {
+            _isSmoothCrouchRequested = true;
+
+            _isCrouching = true;
+            _targetHeight = crouchHeight;
+            _characterCenterY = crouchHeight / 2f;
+            _targetCameraY = crouchHeight - crouchCameraOffset;
+            _moveSpeed = standMoveSpeed * crouchSpeedMultiplier;
+        }
+
+        private void StandUp() {
+            _isSmoothCrouchRequested = true;
+
+            _isCrouching = false;
+            _targetHeight = standHeight;
+
+            _characterCenterY = standHeight / 2f;
+            _targetCameraY = standHeight - crouchCameraOffset;
+            _moveSpeed = standMoveSpeed;
         }
 
         private void HandleMovement() {
@@ -86,7 +127,6 @@ namespace Scenes {
                 _verticalVelocity = -20f;
         }
 
-
         private bool CanStand() {
             float headCheckDistance = standHeight - characterController.height;
             Vector3 start = transform.position + Vector3.up * characterController.height;
@@ -94,17 +134,27 @@ namespace Scenes {
         }
 
         private void HandleCrouch() {
-            float targetHeight = _isCrouching ? crouchHeight : standHeight;
-            characterController.height = Mathf.Lerp(characterController.height, targetHeight, Time.fixedDeltaTime * crouchSpeed);
+            characterController.height = Mathf.Lerp(characterController.height, _targetHeight, Time.fixedDeltaTime * crouchSpeed);
 
-            float centerY = characterController.height / 2f;
-            characterController.center = new Vector3(0, centerY, 0);
+            //Центр Character Controller
+            float currentCenterY = characterController.center.y;
+            float newCenterY = Mathf.Lerp(currentCenterY, _characterCenterY, Time.fixedDeltaTime * crouchSpeed);
+            characterController.center = new Vector3(0, newCenterY, 0);
 
             // Плавное смещение камеры
-            float cameraTargetY = characterController.height - crouchCameraOffset;
             Vector3 camPos = camera.transform.localPosition;
-            camPos.y = Mathf.Lerp(camPos.y, cameraTargetY, Time.fixedDeltaTime * crouchSpeed);
+            camPos.y = Mathf.Lerp(camPos.y, _targetCameraY, Time.fixedDeltaTime * crouchSpeed);
             camera.transform.localPosition = camPos;
+
+            if (Mathf.Abs(characterController.height - _targetHeight) > 0.01f)
+                return;
+
+            characterController.height = _targetHeight;
+            characterController.center = new Vector3(0, _characterCenterY, 0);
+            camPos.y = _targetCameraY;
+            camera.transform.localPosition = camPos;
+
+            _isSmoothCrouchRequested = false;
         }
     }
 }

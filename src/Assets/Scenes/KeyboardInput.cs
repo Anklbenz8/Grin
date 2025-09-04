@@ -43,13 +43,13 @@ namespace Scenes {
                 .AddTo(_subscribes);
 
             Observable.EveryUpdate()
-                .Select(_ => Input.GetKey(KeyCode.E))
+                .Select(_ => Input.GetKeyDown(KeyCode.E))
                 .Where(action => action)
                 .Subscribe(_ => _interactionInputSubject.OnNext(Unit.Default))
                 .AddTo(_subscribes);
 
             Observable.EveryUpdate()
-                .Select(_ => Input.GetKey(KeyCode.Space))
+                .Select(_ => Input.GetKeyDown(KeyCode.Space))
                 .Where(action => action)
                 .Subscribe(_ => _jumpInputSubject.OnNext(Unit.Default))
                 .AddTo(_subscribes);
